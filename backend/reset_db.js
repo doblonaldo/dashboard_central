@@ -26,7 +26,9 @@ db.exec(`
         role TEXT NOT NULL DEFAULT 'VIEWER', -- ADMIN, VIEWER, TV
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
         updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-        isActive BOOLEAN DEFAULT 1
+        isActive BOOLEAN DEFAULT 1,
+        resetToken TEXT,
+        resetExpiresAt DATETIME
     );
 
     CREATE TABLE IF NOT EXISTS Session (
@@ -52,9 +54,11 @@ db.exec(`
     CREATE TABLE IF NOT EXISTS Invite (
         id TEXT PRIMARY KEY,
         token TEXT UNIQUE NOT NULL,
+        email TEXT,
         role TEXT NOT NULL,
         used BOOLEAN DEFAULT 0,
         expiresAt DATETIME NOT NULL,
+        createdBy TEXT,
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 `);

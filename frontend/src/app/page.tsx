@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Lock, Mail, Loader2, AlertCircle, Monitor, User } from "lucide-react";
 import Cookies from "js-cookie";
 
+import { getApiUrl } from "@/utils/api";
+
 export default function LoginPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"user" | "tv">("user");
@@ -22,7 +24,7 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const response = await axios.post("http://localhost:3001/api/auth/login", {
+      const response = await axios.post(`${getApiUrl()}/auth/login`, {
         email,
         password,
       });

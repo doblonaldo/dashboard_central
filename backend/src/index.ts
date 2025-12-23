@@ -29,7 +29,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 // @ts-ignore
 app.use(helmet());
 app.use(cors({
-    origin: 'http://localhost:3000', // Allowed Frontend Origin
+    origin: true, // Allocw any origin (Reflects the request origin)
     credentials: true
 }));
 app.use(express.json());
@@ -139,8 +139,12 @@ app.post('/api/invite/generate', authenticateToken, async (req: any, res: any) =
         VALUES(?, ?, ?, ?, ?, ?, ?, 0)
         `).run(crypto.randomUUID(), token, email, role, expiresAt.toISOString(), req.user.userId, now.toISOString());
 
-        res.json({ link: `http://localhost:3000/invite?token=${token}`, token });
-        console.log(`Generated Invite for ${email}: http://localhost:3000/invite?token=${token}`);
+        const host = req.get('host').replace('3001', '3000'); // Assuming frontend is on port 3000
+        const protocol = req.protocol;
+        const link = `${protocol}://${host}/invite?token=${token}`;
+
+        res.json({ link, token });
+        console.log(`Generated Invite for ${email}: ${link}`);
 
     } catch (error) {
         // @ts-ignore
@@ -206,10 +210,67 @@ app.get('/api/users', authenticateToken, (req: any, res: any) => {
     if (req.user.role !== 'ADMIN') return res.sendStatus(403);
     try {
         const users = db.prepare('SELECT id, name, email, role, isActive, createdAt FROM User').all();
-        res.json(users);
+        const invites = db.prepare('SELECT * FROM Invite WHERE used = 0').all();
+        res.json({ users, invites });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Failed to fetch users' });
+    }
+});
+
+app.post('/api/users/:id/reset-password', authenticateToken, (req: any, res: any) => {
+    if (req.user.role !== 'ADMIN') return res.sendStatus(403);
+    try {
+        const { id } = req.params;
+        const user = db.prepare('SELECT * FROM User WHERE id = ?').get(id);
+
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        const token = crypto.randomUUID();
+        const now = new Date();
+        const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24h
+
+        db.prepare('UPDATE User SET resetToken = ?, resetExpiresAt = ? WHERE id = ?')
+            .run(token, expiresAt.toISOString(), id);
+
+        // Audit Log
+        const logId = crypto.randomUUID();
+        db.prepare(`
+            INSERT INTO AuditLog (id, userId, action, ipAddress, details, createdAt)
+            VALUES (?, ?, ?, ?, ?, ?)
+        `).run(logId, req.user.userId, 'RESET_PASSWORD', null, `Generated reset link for ${user.email}`, now.toISOString());
+
+        const host = req.get('host').replace('3001', '3000');
+        const protocol = req.protocol;
+        res.json({ link: `${protocol}://${host}/reset-password?token=${token}` });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to generate reset link' });
+    }
+});
+
+app.delete('/api/invites/:id', authenticateToken, (req: any, res: any) => {
+    if (req.user.role !== 'ADMIN') return res.sendStatus(403);
+    try {
+        const { id } = req.params;
+        const invite = db.prepare('SELECT email FROM Invite WHERE id = ?').get(id);
+
+        if (!invite) return res.status(404).json({ error: 'Invite not found' });
+
+        const result = db.prepare('DELETE FROM Invite WHERE id = ?').run(id);
+
+        // Audit Log
+        const logId = crypto.randomUUID();
+        db.prepare(`
+            INSERT INTO AuditLog (id, userId, action, ipAddress, details, createdAt)
+            VALUES (?, ?, ?, ?, ?, ?)
+        `).run(logId, req.user.userId, 'REVOKE_INVITE', null, `Revoked invite for ${invite.email}`, new Date().toISOString());
+
+        res.sendStatus(204);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to delete invite' });
     }
 });
 
@@ -222,21 +283,56 @@ app.delete('/api/users/:id', authenticateToken, (req: any, res: any) => {
             return res.status(400).json({ error: 'Cannot delete yourself' });
         }
 
-        db.prepare('DELETE FROM User WHERE id = ?').run(id);
+        const targetUser = db.prepare('SELECT email FROM User WHERE id = ?').get(id);
+        if (!targetUser) return res.status(404).json({ error: 'User not found' });
 
-        // Log action
+        const deleteUser = db.transaction(() => {
+            // Delete related records first
+            db.prepare('DELETE FROM Session WHERE userId = ?').run(id);
+            db.prepare('DELETE FROM AuditLog WHERE userId = ?').run(id);
+            // Delete the user
+            db.prepare('DELETE FROM User WHERE id = ?').run(id);
+        });
+
+        deleteUser();
+
+        // Audit Log
         const logId = crypto.randomUUID();
-        const now = new Date();
-        const ipAddress = (req.ip || req.socket.remoteAddress) || null;
         db.prepare(`
             INSERT INTO AuditLog (id, userId, action, ipAddress, details, createdAt)
             VALUES (?, ?, ?, ?, ?, ?)
-        `).run(logId, req.user.userId, 'DELETE_USER', ipAddress, `Deleted user ${id}`, now.toISOString());
+        `).run(logId, req.user.userId, 'DELETE_USER', '127.0.0.1', `Deleted user ${targetUser.email}`, new Date().toISOString());
 
-        res.json({ message: 'User deleted successfully' });
+        res.sendStatus(204);
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Failed to delete user' });
+    }
+});
+
+app.patch('/api/users/:id/status', authenticateToken, (req: any, res: any) => {
+    if (req.user.role !== 'ADMIN') return res.sendStatus(403);
+    try {
+        const { id } = req.params;
+        const { isActive } = req.body;
+
+        const user = db.prepare('SELECT email FROM User WHERE id = ?').get(id);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        db.prepare('UPDATE User SET isActive = ? WHERE id = ?').run(isActive ? 1 : 0, id);
+
+        // Audit Log
+        const logId = crypto.randomUUID();
+        const action = isActive ? 'UNBLOCK_USER' : 'BLOCK_USER';
+        db.prepare(`
+            INSERT INTO AuditLog (id, userId, action, ipAddress, details, createdAt)
+            VALUES (?, ?, ?, ?, ?, ?)
+        `).run(logId, req.user.userId, action, null, `${action === 'BLOCK_USER' ? 'Blocked' : 'Unblocked'} user ${user.email}`, new Date().toISOString());
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to update user status' });
     }
 });
 

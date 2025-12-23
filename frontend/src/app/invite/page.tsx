@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Lock, User, Loader2, AlertCircle, CheckCircle } from "lucide-react";
 import { Suspense } from 'react';
+import { getApiUrl } from "@/utils/api";
 
 function InviteForm() {
     const searchParams = useSearchParams();
@@ -38,7 +39,7 @@ function InviteForm() {
         }
 
         try {
-            await axios.post("http://localhost:3001/api/invite/accept", {
+            await axios.post(`${getApiUrl()}/invite/accept`, {
                 token,
                 name,
                 password

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
+import { getApiUrl } from "@/utils/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Lock, Mail, Loader2, AlertCircle } from "lucide-react";
@@ -21,7 +22,7 @@ export default function LoginPage() {
         setError("");
 
         try {
-            const response = await axios.post("http://localhost:3001/api/auth/login", {
+            const response = await axios.post(`${getApiUrl()}/auth/login`, {
                 email,
                 password,
             });
