@@ -74,14 +74,14 @@ app.post('/api/auth/login', async (req: express.Request, res: express.Response):
         db.prepare(`
             INSERT INTO Session (id, userId, token, ipAddress, expiresAt)
             VALUES (?, ?, ?, ?, ?)
-        `).run(sessionId, user.id, token.substring(0, 50), ipAddress, expiresAt.toISOString());
+        `).run(sessionId, user.id, token, ipAddress, expiresAt.toISOString());
 
         // Audit Log
         const logId = crypto.randomUUID();
         db.prepare(`
-            INSERT INTO AuditLog (id, userId, action, ipAddress, details, createdAt)
-            VALUES (?, ?, ?, ?, ?, ?)
-        `).run(logId, user.id, 'LOGIN', ipAddress, 'User logged in successfully', now.toISOString());
+            INSERT INTO AuditLog(id, userId, action, ipAddress, details, createdAt)
+        VALUES(?, ?, ?, ?, ?, ?)
+            `).run(logId, user.id, 'LOGIN', ipAddress, 'User logged in successfully', now.toISOString());
 
         res.json({ token, user: { name: user.name, role: user.role, email: user.email } });
     } catch (error) {
@@ -135,8 +135,8 @@ app.post('/api/invite/generate', authenticateToken, async (req: any, res: any) =
         const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
         db.prepare(`
-            INSERT INTO Invite (id, token, email, role, expiresAt, createdBy, createdAt, used)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 0)
+            INSERT INTO Invite(id, token, email, role, expiresAt, createdBy, createdAt, used)
+        VALUES(?, ?, ?, ?, ?, ?, ?, 0)
         `).run(crypto.randomUUID(), token, email, role, expiresAt.toISOString(), req.user.userId, now.toISOString());
 
         res.json({ link: `http://localhost:3000/invite?token=${token}`, token });
@@ -200,3 +200,59 @@ app.listen(Number(PORT), '0.0.0.0', () => {
 
 // Force keep-alive to prevent premature exit (TS-Node/Docker issue?)
 setInterval(() => { }, 10000);
+
+// Admin Routes (User Management)
+app.get('/api/users', authenticateToken, (req: any, res: any) => {
+    if (req.user.role !== 'ADMIN') return res.sendStatus(403);
+    try {
+        const users = db.prepare('SELECT id, name, email, role, isActive, createdAt FROM User').all();
+        res.json(users);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to fetch users' });
+    }
+});
+
+app.delete('/api/users/:id', authenticateToken, (req: any, res: any) => {
+    if (req.user.role !== 'ADMIN') return res.sendStatus(403);
+    try {
+        const { id } = req.params;
+        // Prevent deleting self
+        if (id === req.user.userId) {
+            return res.status(400).json({ error: 'Cannot delete yourself' });
+        }
+
+        db.prepare('DELETE FROM User WHERE id = ?').run(id);
+
+        // Log action
+        const logId = crypto.randomUUID();
+        const now = new Date();
+        const ipAddress = (req.ip || req.socket.remoteAddress) || null;
+        db.prepare(`
+            INSERT INTO AuditLog (id, userId, action, ipAddress, details, createdAt)
+            VALUES (?, ?, ?, ?, ?, ?)
+        `).run(logId, req.user.userId, 'DELETE_USER', ipAddress, `Deleted user ${id}`, now.toISOString());
+
+        res.json({ message: 'User deleted successfully' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to delete user' });
+    }
+});
+
+// Audit Logs
+app.get('/api/audit-logs', authenticateToken, (req: any, res: any) => {
+    if (req.user.role !== 'ADMIN') return res.sendStatus(403);
+    try {
+        const logs = db.prepare(`
+            SELECT Log.*, User.name as userName, User.email as userEmail 
+            FROM AuditLog as Log 
+            LEFT JOIN User ON Log.userId = User.id 
+            ORDER BY Log.createdAt DESC LIMIT 100
+        `).all();
+        res.json(logs);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to fetch logs' });
+    }
+});
