@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
 import AdminPanel from "@/components/AdminPanel";
+import SatisfactionReport from "@/components/SatisfactionReport";
 
 export default function DashboardPage() {
     const router = useRouter();
@@ -73,6 +74,25 @@ export default function DashboardPage() {
                     )}
                 </nav>
 
+                {/* Reports Section */}
+                <div className="px-4 py-2 mt-2">
+                    <p className="px-2 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Relatórios</p>
+                    <button
+                        onClick={() => setActiveTab("satisfaction-report")}
+                        className={`w-full text-left px-4 py-2 rounded-lg transition-colors flex items-center gap-3 text-sm ${activeTab === "satisfaction-report"
+                            ? "bg-blue-600 text-white shadow-lg shadow-blue-900/20"
+                            : "text-slate-400 hover:bg-slate-800 hover:text-white"
+                            }`}
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                        Análise de Notas
+                    </button>
+                </div>
+
+
+
                 <div className="p-4 border-t border-slate-800 space-y-4">
                     <button
                         onClick={handleLogout}
@@ -120,6 +140,22 @@ export default function DashboardPage() {
                             <p className="text-slate-400 mt-1">Administre acessos e convites da plataforma</p>
                         </header>
                         <AdminPanel />
+                    </div>
+                )}
+
+                {activeTab === "satisfaction-report" && (
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <header className="mb-6 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-3xl font-bold text-slate-100">Análise de Performance</h2>
+                                <p className="text-slate-400 mt-1">Indicadores de qualidade e satisfação por ramal</p>
+                            </div>
+                            {/* Logo Placeholder */}
+                            <div className="h-10 w-10 bg-white rounded-lg flex items-center justify-center">
+                                <span className="text-slate-900 font-bold text-xs">LOGO</span>
+                            </div>
+                        </header>
+                        <SatisfactionReport />
                     </div>
                 )}
             </main>

@@ -15,6 +15,7 @@ import jwt = require('jsonwebtoken');
 import { z } from 'zod';
 // @ts-ignore
 import crypto = require('crypto');
+import * as reportController from './controllers/reportController';
 
 dotenv.config();
 
@@ -335,6 +336,10 @@ app.patch('/api/users/:id/status', authenticateToken, (req: any, res: any) => {
         res.status(500).json({ error: 'Failed to update user status' });
     }
 });
+
+// Report Routes
+// @ts-ignore
+app.get('/api/reports/satisfaction', authenticateToken, reportController.getSatisfactionReport);
 
 // Audit Logs
 app.get('/api/audit-logs', authenticateToken, (req: any, res: any) => {
