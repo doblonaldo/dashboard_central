@@ -58,20 +58,7 @@ export default function DashboardPage() {
                         Visão Geral
                     </button>
 
-                    {user.role === 'ADMIN' && (
-                        <button
-                            onClick={() => setActiveTab("users")}
-                            className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center gap-3 ${activeTab === "users"
-                                ? "bg-blue-600 text-white shadow-lg shadow-blue-900/20"
-                                : "text-slate-400 hover:bg-slate-800 hover:text-white"
-                                }`}
-                        >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                            </svg>
-                            Painel de Usuários
-                        </button>
-                    )}
+
                 </nav>
 
                 {/* Reports Section */}
@@ -94,6 +81,23 @@ export default function DashboardPage() {
 
 
                 <div className="p-4 border-t border-slate-800 space-y-4">
+                    {user.role === 'ADMIN' && (
+                        <div className="mb-2">
+                            <p className="px-2 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Administração</p>
+                            <button
+                                onClick={() => setActiveTab("users")}
+                                className={`w-full text-left px-4 py-2 rounded-lg transition-colors flex items-center gap-3 text-sm ${activeTab === "users"
+                                    ? "bg-blue-600 text-white shadow-lg shadow-blue-900/20"
+                                    : "text-slate-400 hover:bg-slate-800 hover:text-white"
+                                    }`}
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                </svg>
+                                Painel de Usuários
+                            </button>
+                        </div>
+                    )}
                     <button
                         onClick={handleLogout}
                         className="w-full text-left px-4 py-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-3 text-sm"
