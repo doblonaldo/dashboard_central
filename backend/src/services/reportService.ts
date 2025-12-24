@@ -4,13 +4,15 @@ export const getAgentSatisfactionStats = async (month?: number, year?: number) =
     let sql = `
         SELECT 
             c.dst AS ramal,
-            n.atendente AS nome_atendente,
+            COALESCE(u.name, n.atendente, 'N/A') AS nome_atendente,
             AVG(n.nota) AS media_notas,
             COUNT(n.nota) AS total_avaliacoes
         FROM 
             asteriskcdrdb.cdr c
         INNER JOIN 
             brphonia.pesquisa n ON c.uniqueid = n.uniqueid
+        LEFT JOIN
+            asterisk.users u ON c.dst = u.extension
     `;
 
     const params: any[] = [];
