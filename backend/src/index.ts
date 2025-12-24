@@ -19,8 +19,7 @@ import * as reportController from './controllers/reportController';
 
 dotenv.config();
 
-const Database = require('better-sqlite3');
-const db = new Database('dev.db', { verbose: console.log });
+import { db } from './db/sqlite';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -340,6 +339,9 @@ app.patch('/api/users/:id/status', authenticateToken, (req: any, res: any) => {
 // Report Routes
 // @ts-ignore
 app.get('/api/reports/satisfaction', authenticateToken, reportController.getSatisfactionReport);
+app.get('/api/reports/volume', authenticateToken, reportController.getCallVolumeReport);
+app.get('/api/reports/productivity', authenticateToken, reportController.getProductivityReport);
+app.get('/api/reports/pauses', authenticateToken, reportController.getPauseReport);
 
 // Audit Logs
 app.get('/api/audit-logs', authenticateToken, (req: any, res: any) => {

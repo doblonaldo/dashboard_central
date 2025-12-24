@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
 import AdminPanel from "@/components/AdminPanel";
 import SatisfactionReport from "@/components/SatisfactionReport";
+import CallVolumeReport from "@/components/reports/CallVolumeReport";
+import ProductivityReport from "@/components/reports/ProductivityReport";
 
 export default function DashboardPage() {
     const router = useRouter();
@@ -37,7 +39,7 @@ export default function DashboardPage() {
     return (
         <div className="flex min-h-screen bg-slate-950 text-white font-sans">
             {/* Sidebar */}
-            <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col fixed h-full">
+            <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col fixed h-full overflow-y-auto">
                 <div className="p-6 border-b border-slate-800">
                     <h1 className="text-2xl font-bold tracking-tight text-blue-500">
                         URA DAC <span className="text-white">Monitor</span>
@@ -75,6 +77,32 @@ export default function DashboardPage() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                         </svg>
                         Análise de Notas
+                    </button>
+
+                    <button
+                        onClick={() => setActiveTab("volume-report")}
+                        className={`w-full text-left px-4 py-2 rounded-lg transition-colors flex items-center gap-3 text-sm ${activeTab === "volume-report"
+                            ? "bg-blue-600 text-white shadow-lg shadow-blue-900/20"
+                            : "text-slate-400 hover:bg-slate-800 hover:text-white"
+                            }`}
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+                        </svg>
+                        Volumetria
+                    </button>
+
+                    <button
+                        onClick={() => setActiveTab("productivity-report")}
+                        className={`w-full text-left px-4 py-2 rounded-lg transition-colors flex items-center gap-3 text-sm ${activeTab === "productivity-report"
+                            ? "bg-blue-600 text-white shadow-lg shadow-blue-900/20"
+                            : "text-slate-400 hover:bg-slate-800 hover:text-white"
+                            }`}
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Produtividade
                     </button>
                 </div>
 
@@ -160,6 +188,26 @@ export default function DashboardPage() {
                             </div>
                         </header>
                         <SatisfactionReport />
+                    </div>
+                )}
+
+                {activeTab === "volume-report" && (
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <header className="mb-6">
+                            <h2 className="text-3xl font-bold text-slate-100">Volumetria Operacional</h2>
+                            <p className="text-slate-400 mt-1">Distribuição de chamadas por dia e hora</p>
+                        </header>
+                        <CallVolumeReport />
+                    </div>
+                )}
+
+                {activeTab === "productivity-report" && (
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <header className="mb-6">
+                            <h2 className="text-3xl font-bold text-slate-100">Produtividade da Equipe</h2>
+                            <p className="text-slate-400 mt-1">Resumo de atendimentos e gestão de pausas</p>
+                        </header>
+                        <ProductivityReport />
                     </div>
                 )}
             </main>
