@@ -7,6 +7,7 @@ import AdminPanel from "@/components/AdminPanel";
 import SatisfactionReport from "@/components/SatisfactionReport";
 import CallVolumeReport from "@/components/reports/CallVolumeReport";
 import ProductivityReport from "@/components/reports/ProductivityReport";
+import RealTimeDashboard from "@/components/dashboard/RealTimeDashboard";
 
 export default function DashboardPage() {
     const router = useRouter();
@@ -155,13 +156,7 @@ export default function DashboardPage() {
                             <p className="text-slate-400 mt-1">Monitoramento em tempo real do sistema</p>
                         </header>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            <div className="bg-slate-900 p-6 rounded-xl border border-slate-800 hover:border-blue-500/50 transition-colors group">
-                                <h3 className="text-sm font-medium text-slate-400 group-hover:text-blue-400 transition-colors">Sessões Ativas</h3>
-                                <p className="text-3xl font-bold text-white mt-2">1</p>
-                            </div>
-                            {/* Add more metric cards here */}
-                        </div>
+                        <RealTimeDashboard />
                     </div>
                 )}
 

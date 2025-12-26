@@ -21,7 +21,22 @@ dotenv.config();
 
 import { db } from './db/sqlite';
 
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+import { AMIService } from './services/amiService';
+
 const app = express();
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+    cors: {
+        origin: "*", // Allow all for dev, tighten in prod
+        methods: ["GET", "POST"]
+    }
+});
+
+// Initialize AMI Service
+const amiService = new AMIService(io);
+
 const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 
@@ -195,11 +210,13 @@ app.post('/api/invite/accept', async (req: any, res: any) => {
     }
 });
 
-// Server Start
+// ... (Rest of routes)
+
 // Server Start
 console.log('Starting server on PORT:', PORT);
-app.listen(Number(PORT), '0.0.0.0', () => {
+httpServer.listen(Number(PORT), '0.0.0.0', () => {
     console.log(`Backend server running on http://0.0.0.0:${PORT}`);
+    console.log(`Socket.IO server ready`);
 });
 
 // Force keep-alive to prevent premature exit (TS-Node/Docker issue?)
