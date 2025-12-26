@@ -8,6 +8,7 @@ import { Loader2 } from 'lucide-react';
 
 interface DashboardState {
     queues: Record<string, any[]>;
+    queueNames: Record<string, string>;
     stats: {
         callsWaiting: Record<string, number>;
     };
@@ -18,6 +19,7 @@ export default function RealTimeDashboard() {
     const [socket, setSocket] = useState<Socket | null>(null);
     const [data, setData] = useState<DashboardState>({
         queues: {},
+        queueNames: {},
         stats: { callsWaiting: {} },
         connectionStatus: 'connecting'
     });
@@ -49,6 +51,7 @@ export default function RealTimeDashboard() {
             setData(prev => ({
                 ...prev,
                 queues: payload.queues || {},
+                queueNames: payload.queueNames || {},
                 stats: payload.stats || { callsWaiting: {} }
             }));
         });
@@ -170,7 +173,7 @@ export default function RealTimeDashboard() {
                     {Object.entries(data.queues).map(([queueName, members]) => (
                         <QueueCard
                             key={queueName}
-                            queueName={queueName}
+                            queueName={data.queueNames[queueName] || queueName}
                             members={members}
                             callsWaiting={data.stats.callsWaiting[queueName] || 0}
                         />

@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Phone, PhoneIncoming, PauseCircle, CheckCircle, XCircle } from 'lucide-react';
 
 interface QueueMember {
-    name: string;      // SIP/8000
+    member: string;    // Extension ID (e.g. 9000)
+    name: string;      // SIP/8000 or Name
     status: string;    // Invalid, Not in use, In use...
     paused: boolean;
     callsTaken: number;
@@ -27,98 +28,117 @@ export function QueueCard({ queueName, members, callsWaiting }: QueueProps) {
         // Priority to Pause
         if (member.paused) {
             return {
-                color: 'text-yellow-600 bg-yellow-50 border-yellow-200',
-                dot: 'bg-yellow-500',
-                icon: <PauseCircle className="w-3.5 h-3.5" />,
-                text: 'Pausa'
+                borderColor: 'border-l-yellow-400',
+                bgColor: 'bg-white',
+                textColor: 'text-yellow-700',
+                badgeColor: 'bg-yellow-100 text-yellow-800',
+                icon: <PauseCircle className="w-4 h-4 text-yellow-500" />,
+                text: 'Pausa',
+                statusDot: 'bg-yellow-400'
             };
         }
 
         const status = parseInt(member.status);
 
-        // Map Asterisk Status to UI
-        // 0=Idle, 1=InUse, 2=Busy, 4=Unavailable, 8=Ringing, 16=Hold
         switch (status) {
             case 1: // InUse
             case 2: // Busy
                 return {
-                    color: 'text-red-600 bg-red-50 border-red-200',
-                    dot: 'bg-red-500',
-                    icon: <Phone className="w-3.5 h-3.5" />,
-                    text: 'Em Chamada'
+                    borderColor: 'border-l-red-500',
+                    bgColor: 'bg-red-50/10',
+                    textColor: 'text-red-700',
+                    badgeColor: 'bg-red-100 text-red-800',
+                    icon: <Phone className="w-4 h-4 text-red-500" />,
+                    text: 'Em Chamada',
+                    statusDot: 'bg-red-500 animate-pulse'
                 };
             case 8: // Ringing
                 return {
-                    color: 'text-blue-600 bg-blue-50 border-blue-200',
-                    dot: 'bg-blue-500 animate-pulse',
-                    icon: <PhoneIncoming className="w-3.5 h-3.5" />,
-                    text: 'Chamando'
+                    borderColor: 'border-l-blue-500',
+                    bgColor: 'bg-blue-50/10',
+                    textColor: 'text-blue-700',
+                    badgeColor: 'bg-blue-100 text-blue-800',
+                    icon: <PhoneIncoming className="w-4 h-4 text-blue-500" />,
+                    text: 'Chamando',
+                    statusDot: 'bg-blue-500 animate-bounce'
                 };
             case 4: // Unavailable
             case 5:
                 return {
-                    color: 'text-gray-400 bg-gray-50 border-gray-100',
-                    dot: 'bg-gray-300',
-                    icon: <XCircle className="w-3.5 h-3.5" />,
-                    text: 'Indisponível'
+                    borderColor: 'border-l-slate-300',
+                    bgColor: 'bg-slate-50',
+                    textColor: 'text-slate-400',
+                    badgeColor: 'bg-slate-100 text-slate-500',
+                    icon: <XCircle className="w-4 h-4 text-slate-300" />,
+                    text: 'Indisponível',
+                    statusDot: 'bg-slate-300'
                 };
             case 0: // Idle
             default:
                 return {
-                    color: 'text-emerald-700 bg-emerald-50 border-emerald-200',
-                    dot: 'bg-emerald-500',
-                    icon: <CheckCircle className="w-3.5 h-3.5" />,
-                    text: 'Disponível'
+                    borderColor: 'border-l-emerald-500',
+                    bgColor: 'bg-white',
+                    textColor: 'text-emerald-700',
+                    badgeColor: 'bg-emerald-100 text-emerald-800',
+                    icon: <CheckCircle className="w-4 h-4 text-emerald-500" />,
+                    text: 'Disponível',
+                    statusDot: 'bg-emerald-500'
                 };
         }
     };
 
     return (
-        <Card className="w-full shadow-sm hover:shadow-md transition-shadow duration-200 border border-slate-200 rounded-xl overflow-hidden">
+        <Card className="w-full shadow-sm rounded-xl bg-transparent flex flex-col h-full border-none shadow-none">
             {/* Header with Color Accent */}
-            <div className={`h-1 w-full ${callsWaiting > 0 ? 'bg-red-500' : 'bg-blue-500'}`} />
+            <div className={`h-1.5 w-full rounded-t-xl ${callsWaiting > 0 ? 'bg-red-500' : 'bg-blue-600'}`} />
 
-            <CardHeader className="flex flex-row items-center justify-between py-3 px-4 bg-white border-b border-slate-50">
-                <CardTitle className="text-base font-semibold text-slate-700 truncate" title={queueName}>
+            <CardHeader className="flex flex-row items-center justify-between py-3 px-4 bg-white border border-slate-200/60 rounded-b-none rounded-t-none border-t-0 shadow-sm">
+                <CardTitle className="text-base font-bold text-slate-800 truncate tracking-tight" title={queueName}>
                     {queueName}
                 </CardTitle>
                 {callsWaiting > 0 && (
-                    <Badge variant="destructive" className="ml-2 text-xs font-medium animate-pulse">
+                    <Badge variant="destructive" className="ml-2 px-2 py-0.5 text-xs font-bold animate-pulse shadow-sm">
                         {callsWaiting} na fila
                     </Badge>
                 )}
             </CardHeader>
 
-            <CardContent className="p-4 grid grid-cols-2 lg:grid-cols-3 gap-3 bg-slate-50/50 h-fit">
+            <CardContent className="p-0 pt-4 grid grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3 bg-transparent h-fit content-start">
                 {members.map((member) => {
                     const config = getStatusConfig(member);
                     return (
                         <div key={member.name} className={`
-                            relative group flex flex-col items-start p-3 rounded-lg border bg-white
-                            transition-all duration-200 hover:border-slate-300 hover:shadow-sm
-                            ${config.color} border-l-4
+                            relative group flex flex-col justify-between p-3 rounded-xl border border-slate-200
+                            bg-white shadow-sm hover:shadow-md transition-all duration-200
+                            ${config.borderColor} border-l-[6px]
                        `}>
-                            <div className="flex items-center justify-between w-full mb-1">
-                                <span className="font-bold text-slate-800 text-sm truncate w-full" title={member.name || member.member}>
+                            {/* Initials/Avatar Placeholder and Name */}
+                            <div className="flex items-start justify-between w-full mb-2 gap-2">
+                                <span className="font-bold text-slate-800 text-sm leading-tight line-clamp-2" title={member.name || member.member}>
                                     {(member.name || member.member || '').replace(/^SIP\/|^PJSIP\//, '')}
                                 </span>
                             </div>
 
-                            <div className="flex items-center gap-1.5 text-xs font-medium mt-1 opacity-90">
-                                <span className={`w-2 h-2 rounded-full ${config.dot}`} />
+                            {/* Status Pill */}
+                            <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide w-fit mb-3 ${config.badgeColor}`}>
+                                {config.text === 'Em Chamada' || config.text === 'Chamando' ? (
+                                    <span className={`w-1.5 h-1.5 rounded-full ${config.statusDot}`} />
+                                ) : null}
                                 {config.text}
                             </div>
 
-                            <div className="mt-2 w-full pt-2 border-t border-slate-100 flex justify-between items-center text-[10px] text-slate-500 font-medium space-x-2">
-                                <div className="flex flex-col items-center flex-1 border-r border-slate-100 pr-1">
-                                    <span className="text-[9px] uppercase tracking-wider text-slate-400">Atendidas</span>
-                                    <span className="text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded-md mt-0.5">
+                            {/* Metrics Footer */}
+                            <div className="w-full pt-2 border-t border-slate-100 flex justify-between items-center text-[10px] font-semibold text-slate-500">
+                                <div className="flex flex-col">
+                                    <span className="text-[9px] uppercase text-slate-400 mb-0.5">Atendidas</span>
+                                    <span className="text-slate-700 text-xs">
                                         {member.callsTaken}
                                     </span>
                                 </div>
-                                <div className="flex flex-col items-center flex-1 pl-1">
-                                    <span className="text-[9px] uppercase tracking-wider text-slate-400">Efetuadas</span>
-                                    <span className="text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded-md mt-0.5">
+                                <div className="h-6 w-px bg-slate-100 mx-1"></div>
+                                <div className="flex flex-col items-end">
+                                    <span className="text-[9px] uppercase text-slate-400 mb-0.5">Efetuadas</span>
+                                    <span className="text-slate-700 text-xs">
                                         {member.callsMade || 0}
                                     </span>
                                 </div>
@@ -127,11 +147,11 @@ export function QueueCard({ queueName, members, callsWaiting }: QueueProps) {
                     );
                 })}
                 {members.length === 0 && (
-                    <div className="col-span-full flex flex-col items-center justify-center py-6 text-slate-400">
-                        <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center mb-2">
-                            <XCircle className="w-5 h-5 opacity-50" />
+                    <div className="col-span-full flex flex-col items-center justify-center py-8 text-slate-400 bg-white/50 rounded-lg border border-dashed border-slate-300 mx-4 mb-4">
+                        <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center mb-2">
+                            <XCircle className="w-6 h-6 opacity-30" />
                         </div>
-                        <span className="text-xs font-medium">Sem agentes logados</span>
+                        <span className="text-sm font-medium">Nenhum agente logado</span>
                     </div>
                 )}
             </CardContent>

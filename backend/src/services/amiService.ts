@@ -9,6 +9,7 @@ export class AMIService {
     private io: SocketIOServer;
     // Store latest state: QueueID -> Map<MemberID, MemberData>
     private queueState: Map<string, Map<string, any>> = new Map();
+    private queueNames: Map<string, string> = new Map();
     private extensionState: Map<string, any> = new Map();
     private logStream: fs.WriteStream;
 
@@ -63,6 +64,7 @@ export class AMIService {
                     });
                 });
                 this.queueState.set(queue.id, membersMap);
+                this.queueNames.set(queue.id, queue.name || `Fila ${queue.id}`);
             });
             console.log(`✅ State Hydrated: ${Object.keys(queues).length} queues loaded.`);
 
@@ -74,6 +76,7 @@ export class AMIService {
 
             this.io.emit('initial-state', {
                 queues: queuesData,
+                queueNames: Object.fromEntries(this.queueNames),
                 stats: { callsWaiting: {} }
             });
 
@@ -131,6 +134,7 @@ export class AMIService {
 
             socket.emit('initial-state', {
                 queues: queuesData,
+                queueNames: Object.fromEntries(this.queueNames),
                 stats: { callsWaiting: {} }
             });
         });
