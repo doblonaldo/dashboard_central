@@ -11,6 +11,7 @@ interface ProductivityData {
     nao_atendidas: number;
     falhas: number;
     total_geral: number;
+    tma_segundos: number; // Added Phase 3
 }
 
 interface PauseData {
@@ -137,11 +138,12 @@ export default function ProductivityReport() {
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="border-b border-slate-800 text-slate-400 text-sm uppercase tracking-wider">
-                                    <th className="p-4 font-medium">Agente</th>
-                                    <th className="p-4 font-medium text-center text-green-400">Atendidas</th>
-                                    <th className="p-4 font-medium text-center text-yellow-400">Não Atendidas</th>
-                                    <th className="p-4 font-medium text-center text-red-400">Falhas</th>
-                                    <th className="p-4 font-medium text-right font-bold text-white">Total</th>
+                                    <th className="p-4 font-medium" title="Nome e ramal do operador">Agente</th>
+                                    <th className="p-4 font-medium text-center text-green-400" title="Chamadas atendidas com sucesso">Atendidas</th>
+                                    <th className="p-4 font-medium text-center text-purple-400" title="Tempo Médio de Atendimento (em segundos)">TMA</th>
+                                    <th className="p-4 font-medium text-center text-yellow-400" title="Chamadas que tocaram mas não foram atendidas">Não Atendidas</th>
+                                    <th className="p-4 font-medium text-center text-red-400" title="Chamadas que falharam por erro de rede ou indisponibilidade">Falhas</th>
+                                    <th className="p-4 font-medium text-right font-bold text-white" title="Total de chamadas (Atendidas + Não Atendidas + Falhas)">Total</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-800/50">
@@ -152,13 +154,16 @@ export default function ProductivityReport() {
                                             <div className="text-xs text-slate-500">Ramal {item.ramal}</div>
                                         </td>
                                         <td className="p-4 text-center font-mono text-slate-300">{item.atendidas}</td>
+                                        <td className="p-4 text-center font-mono text-purple-300">
+                                            {item.tma_segundos ? `${item.tma_segundos}s` : '-'}
+                                        </td>
                                         <td className="p-4 text-center font-mono text-slate-300">{item.nao_atendidas}</td>
                                         <td className="p-4 text-center font-mono text-slate-300">{item.falhas}</td>
                                         <td className="p-4 text-right font-bold text-lg text-white">{item.total_geral}</td>
                                     </tr>
                                 )) : (
                                     <tr>
-                                        <td colSpan={5} className="p-12 text-center text-slate-500">
+                                        <td colSpan={6} className="p-12 text-center text-slate-500">
                                             Nenhum dado encontrado.
                                         </td>
                                     </tr>

@@ -43,23 +43,29 @@ export const getAgentSatisfactionStats = async (month?: number, year?: number) =
     return await query(sql, params);
 };
 
+// Phase 4: CEL-based Volume Query (High Fidelity)
 export const getCallVolumeStats = async (month?: number, year?: number) => {
     let sql = `
         SELECT 
-            DAY(calldate) AS dia,
-            HOUR(calldate) AS hora,
-            COUNT(*) AS total_chamadas
+            DAY(eventtime) AS dia,
+            HOUR(eventtime) AS hora,
+            COUNT(DISTINCT linkedid) AS total_chamadas
         FROM 
-            asteriskcdrdb.cdr
+            asteriskcdrdb.cel
     `;
 
     const params: any[] = [];
     const conditions: string[] = [];
 
     if (month && year) {
-        conditions.push('MONTH(calldate) = ?', 'YEAR(calldate) = ?');
+        conditions.push('MONTH(eventtime) = ?', 'YEAR(eventtime) = ?');
         params.push(month, year);
     }
+
+    // Filter for new calls entering the system
+    conditions.push("eventtype = 'CHAN_START'");
+    // Exclude internal/local channels from volume count
+    conditions.push("channame NOT LIKE 'Local/%'");
 
     if (conditions.length > 0) {
         sql += ` WHERE ${conditions.join(' AND ')}`;
@@ -70,42 +76,63 @@ export const getCallVolumeStats = async (month?: number, year?: number) => {
     return query(sql, params);
 };
 
+// Phase 4: CEL-based Productivity Query (Strict Filter for Accuracy)
 export const getAgentProductivityStats = async (month?: number, year?: number) => {
     let sql = `
         SELECT 
-            c.dst AS ramal,
+            SUBSTRING_INDEX(SUBSTRING_INDEX(c.channame, '/', -1), '-', 1) AS ramal,
             COALESCE(u.name, 'Ramal Desconhecido') AS nome_agente,
-            SUM(CASE WHEN c.disposition = 'ANSWERED' THEN 1 ELSE 0 END) AS atendidas,
-            SUM(CASE WHEN c.disposition IN ('NO ANSWER', 'BUSY') THEN 1 ELSE 0 END) AS nao_atendidas,
-            SUM(CASE WHEN c.disposition = 'FAILED' THEN 1 ELSE 0 END) AS falhas,
-            COUNT(*) AS total_geral
+            
+            -- Count DISTINCT UNIQUEIDs for this agent's successful bridge entries (Answers)
+            COUNT(DISTINCT c.uniqueid) AS atendidas,
+            
+            0 AS nao_atendidas, 
+            0 AS falhas,
+            COUNT(DISTINCT c.uniqueid) AS total_geral,
+            
+            -- TMA: Duration of the bridge session for this specific uniqueid
+            ROUND(AVG(
+                (SELECT TIMESTAMPDIFF(SECOND, c.eventtime, min(end_event.eventtime))
+                 FROM asteriskcdrdb.cel as end_event
+                 WHERE end_event.uniqueid = c.uniqueid -- Match specific leg (uniqueid)
+                   AND end_event.eventtype IN ('BRIDGE_EXIT', 'HANGUP')
+                   AND end_event.eventtime >= c.eventtime
+                )
+            ), 1) as tma_segundos
+
         FROM 
-            asteriskcdrdb.cdr c
+            asteriskcdrdb.cel c
         LEFT JOIN
-            asterisk.users u ON c.dst = u.extension
+            asterisk.users u ON SUBSTRING_INDEX(SUBSTRING_INDEX(c.channame, '/', -1), '-', 1) = u.extension
     `;
 
     const params: any[] = [];
     const conditions: string[] = [];
 
     if (month && year) {
-        conditions.push('MONTH(c.calldate) = ?', 'YEAR(c.calldate) = ?');
+        conditions.push('MONTH(c.eventtime) = ?', 'YEAR(c.eventtime) = ?');
         params.push(month, year);
     }
 
-    conditions.push('LENGTH(c.dst) = 4');
+    // Strict filters to match user expectation (approx. CDR counts)
+    conditions.push("c.eventtype = 'BRIDGE_ENTER'");
+    conditions.push("c.channame NOT LIKE 'Local/%'"); // Exclude internal / system channels
+    conditions.push("u.name IS NOT NULL"); // Must map to a real user
+
+    // Ensure 4-digit extension
+    conditions.push("LENGTH(SUBSTRING_INDEX(SUBSTRING_INDEX(c.channame, '/', -1), '-', 1)) = 4");
 
     if (conditions.length > 0) {
         sql += ` WHERE ${conditions.join(' AND ')}`;
     }
 
-    sql += ` GROUP BY c.dst, nome_agente ORDER BY total_geral DESC`;
+    sql += ` GROUP BY ramal, nome_agente ORDER BY atendidas DESC`;
 
     return query(sql, params);
 };
 
+// Phase 3: Refined Pause Query
 export const getPauseStats = async () => {
-    // Note: queue_log might need date filtering in production
     const sql = `
         SELECT 
             agent AS agente,
