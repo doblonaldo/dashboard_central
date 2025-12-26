@@ -89,15 +89,24 @@ export function QueueCard({ queueName, members, callsWaiting }: QueueProps) {
 
     return (
         <Card className="w-full shadow-sm rounded-xl bg-transparent flex flex-col h-full border-none shadow-none">
-            {/* Header with Color Accent */}
-            <div className={`h-1.5 w-full rounded-t-xl ${callsWaiting > 0 ? 'bg-red-500' : 'bg-blue-600'}`} />
+            {/* Header with Color Accent - only show if NOT red mode (to avoid double borders) */}
+            {callsWaiting === 0 && (
+                <div className="h-1.5 w-full rounded-t-xl bg-blue-600" />
+            )}
 
-            <CardHeader className="flex flex-row items-center justify-between py-3 px-4 bg-white border border-slate-200/60 rounded-b-none rounded-t-none border-t-0 shadow-sm">
-                <CardTitle className="text-base font-bold text-slate-800 truncate tracking-tight" title={queueName}>
+            <CardHeader className={`
+                flex flex-row items-center justify-between py-3 px-4 border-b shadow-sm 
+                transition-colors duration-300
+                ${callsWaiting > 0
+                    ? 'bg-red-600 border-red-700 text-white rounded-t-xl'
+                    : 'bg-white border-slate-200 border-x-0 border-t-0 text-slate-800 rounded-t-none'
+                }
+            `}>
+                <CardTitle className="text-base font-bold truncate tracking-tight" title={queueName}>
                     {queueName}
                 </CardTitle>
                 {callsWaiting > 0 && (
-                    <Badge variant="destructive" className="ml-2 px-2 py-0.5 text-xs font-bold animate-pulse shadow-sm">
+                    <Badge className="ml-2 px-2 py-0.5 text-xs font-bold animate-pulse shadow-sm bg-white text-red-700 hover:bg-white/90">
                         {callsWaiting} na fila
                     </Badge>
                 )}
@@ -107,7 +116,7 @@ export function QueueCard({ queueName, members, callsWaiting }: QueueProps) {
                 {members.map((member) => {
                     const config = getStatusConfig(member);
                     return (
-                        <div key={member.name} className={`
+                        <div key={member.member} className={`
                             relative group flex flex-col justify-between p-3 rounded-xl border border-slate-200
                             bg-white shadow-sm hover:shadow-md transition-all duration-200
                             ${config.borderColor} border-l-[6px]

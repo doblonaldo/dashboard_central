@@ -1,5 +1,6 @@
 import { Server as SocketIOServer } from 'socket.io';
 import { QueueService } from './queueService';
+import { StatsService } from './statsService';
 import * as fs from 'fs';
 import * as path from 'path';
 const AMI = require('asterisk-manager');
@@ -22,6 +23,7 @@ export class AMIService {
         console.log(`📝 AMI Logging enabled: ${logPath}`);
 
         // Initialize State from DB
+        StatsService.init();
         this.initializeState();
 
         // Initialize AMI Connection
@@ -48,6 +50,7 @@ export class AMIService {
         try {
             console.log('🔄 Hydrating Queue State from DB...');
             const queues = await QueueService.getQueuesStructuring();
+            const dailyStats = StatsService.getDailyStats();
 
             Object.values(queues).forEach(queue => {
                 const membersMap = new Map();
@@ -59,7 +62,7 @@ export class AMIService {
                         status: '4', // Default to Unavailable (Indisponível) until verified
                         paused: false,
                         callsTaken: 0,
-                        callsMade: 0,
+                        callsMade: dailyStats.get(member.extension) || 0,
                         timestamp: new Date().toISOString()
                     });
                 });
@@ -141,6 +144,66 @@ export class AMIService {
 
         // ... (rest of listeners)
 
+        // --- Outgoing Calls (DialEnd) ---
+        // Event: DialEnd
+        // Privileges: call, all
+        this.ami.on('dialend', (evt: any) => {
+            console.log('Detected DialEnd:', evt);
+            // Only count answered calls
+            if (evt.dialstatus !== 'ANSWER') return;
+
+            // IGNORE internal queue distributions
+            // Contexts usually associated with queue distribution:
+            const ignoreContexts = ['from-queue', 'ext-queues', 'macro-dial-one', 'from-internal-xfer'];
+            if (ignoreContexts.includes(evt.context) || ignoreContexts.includes(evt.destcontext)) {
+                console.log(`Ignoring Queue/Internal DialEnd: ${evt.context} -> ${evt.destcontext}`);
+                return;
+            }
+
+            // Filter logic: Only count if context suggests outgoing call 
+            // (often 'macro-dialout-trunk' or 'from-internal' to external)
+            // But 'from-internal' can be internal calls too.
+            // Strongest indicator for outgoing usually involves 'macro-dialout-trunk'.
+
+            // Safer check: If it's NOT in the ignore list, we count it, but maybe verify destchannel isn't local?
+            // For now, strict exclusion of queue contexts should solve the "double count" issue.
+
+            // Channel: PJSIP/2001-00000001 or SIP/2001-00000001
+            // We need to extract '2001'
+            // Some Asterisk versions use 'Channel', others 'channel'.
+            const channel = evt.channel || evt.Channel;
+
+            if (!channel) {
+                console.warn('⚠️ DialEnd event missing channel. Keys:', Object.keys(evt));
+                return;
+            }
+
+            const match = channel.match(/[:/](\d+)/);
+            if (!match) return;
+            const extension = match[1];
+
+            console.log(`Intercepted outgoing call from ${extension}`);
+
+            // Find this extension in queues and update
+            this.queueState.forEach((members, queueId) => {
+                if (members.has(extension)) {
+                    const member = members.get(extension);
+                    StatsService.incrementCallsMade(extension); // Persist
+                    member.callsMade = (member.callsMade || 0) + 1;
+                    member.timestamp = new Date().toISOString();
+
+                    members.set(extension, member);
+
+                    console.log(`Updated callsMade for ${extension} in queue ${queueId}: ${member.callsMade}`);
+
+                    this.io.emit('queue-member-update', {
+                        ...member,
+                        status: member.status // ensure status is sent
+                    });
+                }
+            });
+        });
+
         // --- Extension Status (Device State) ---
         // Event: ExtensionStatus
         // Privileges: call, all
@@ -201,6 +264,10 @@ export class AMIService {
         this.ami.on('devicestatechange', (evt: any) => {
             // evt.device (PJSIP/9008)
             // evt.state (NOT_INUSE, INUSE, BUSY, RINGING, UNAVAILABLE)
+
+            // Ignore Local channels (virtual channels from queues/fwd)
+            // We only want physical device states (SIP, PJSIP, IAX, DAHDI)
+            if (evt.device.startsWith('Local/')) return;
 
             // Extract extension
             const match = evt.device.match(/[:/](\d+)/);
